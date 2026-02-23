@@ -382,7 +382,7 @@
   <div class="api-toggle">
     <label for="apiToggle">Direct</label>
     <label class="toggle-switch">
-      <input type="checkbox" id="apiToggle">
+      <input type="checkbox" id="apiToggle" checked>
       <span class="toggle-track"></span>
     </label>
     <label for="apiToggle">Proxy</label>
@@ -3443,11 +3443,38 @@ async function startGame() {
   nextRound();
 }
 
+// ── API helper ───────────────────────────────────────────────────────────────
+function getApiConfig() {
+  const useProxy = document.getElementById("apiToggle").checked;
+  const RENDER_PROXY_URL = "https://spebe.onrender.com/api/claude";
+  return {
+    url: useProxy ? RENDER_PROXY_URL : "https://api.anthropic.com/v1/messages",
+    headers: useProxy
+      ? { "Content-Type": "application/json" }
+      : { "Content-Type": "application/json", "x-api-key": "YOUR_ANTHROPIC_API_KEY_HERE", "anthropic-version": "2023-06-01" }
+  };
+}
+
+async function claudeCall(prompt) {
+  const { url, headers } = getApiConfig();
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 150,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  const data = await response.json();
+  return data.content.map(b => b.text || "").join("").trim();
+}
+
+// ── Speed Run nextRound ───────────────────────────────────────────────────────
 async function nextRound() {
   round++;
   roundNum.textContent = round;
 
-  // Use targeted word if set, then clear it
   if (targetedWord) {
     currentWord = targetedWord;
     targetedWord = null;
@@ -3464,58 +3491,71 @@ async function nextRound() {
   spellingInput.focus();
   repeatBtn.style.display = "none";
 
-  setStatus("Thinking of a sentence...", false);
+  // ── Step 1: Say the word immediately, no API needed ──────────────────────
+  const wordAnnouncement = `${currentWord}.`;
+  lastSpokenText = wordAnnouncement; // so Repeat works from the start
+  setStatus("", false);
+  statusText.style.display = "none";
 
+  await waitIfPaused();
+  await speakText(wordAnnouncement);
+  if (!submitBtn.disabled) return; // interrupted
+
+  // Enable input right after word is spoken — they can spell now
+  submitBtn.disabled = false;
+  spellingInput.placeholder = "type your spelling...";
+  spellingInput.focus();
+
+  // ── Step 2: Fetch & speak definition in background ───────────────────────
+  setStatus("Getting definition...", false);
+  let definitionText = "";
   try {
-    const prompt = `You are a friendly spelling bee teacher. The word is: "${currentWord}"
-Announce it warmly in 2-3 short sentences total. If the word has alternate spellings (shown with /), mention them naturally:
-1. "Word number ${round}: ${currentWord}."
-2. One-sentence definition.
-3. One short example sentence using the word.
-Do not spell it out. End with "Please spell: ${currentWord}."`;
+    const altNote = currentWord.includes("/") ? " (This word has alternate spellings shown with /.)" : "";
+    definitionText = await claudeCall(
+      `You are a spelling bee teacher. Give a single warm sentence defining the word "${currentWord}".${altNote} Do not use the word itself in the definition. No intro, just the definition sentence.`
+    );
+  } catch(e) { /* silently skip if fails */ }
 
-    const useProxy = document.getElementById("apiToggle").checked;
-    const RENDER_PROXY_URL = "https://spebe.onrender.com/api/claude";
-    const apiUrl = useProxy ? RENDER_PROXY_URL : "https://api.anthropic.com/v1/messages";
-    const apiHeaders = useProxy
-      ? { "Content-Type": "application/json" }
-      : { "Content-Type": "application/json", "x-api-key": "YOUR_ANTHROPIC_API_KEY_HERE", "anthropic-version": "2023-06-01" };
-
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: apiHeaders,
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 200,
-        messages: [{ role: "user", content: prompt }]
-      })
-    });
-
-    const data = await response.json();
-    const text = data.content.map(b => b.text || "").join("");
-
-    // Wait if paused before speaking
-    if (isPaused) {
-      setStatus("Paused — press Resume to continue", false);
-      await new Promise(r => {
-        const check = setInterval(() => { if (!isPaused) { clearInterval(check); r(); } }, 200);
-      });
-    }
-    await speakText(text);
-
-    // If already interrupted, submit was re-enabled there
-    if (!submitBtn.disabled) return;
-    submitBtn.disabled = false;
-    spellingInput.placeholder = "type your spelling...";
-    spellingInput.focus();
-    repeatBtn.style.display = "block";
-    setStatus("Type your spelling above and press ✓ or Enter", false);
-
-  } catch (err) {
-    setStatus("Error connecting to Claude. Check your API setup.", false);
-    spellingInput.disabled = false;
-    console.error(err);
+  if (!submitBtn.disabled && spellingInput.disabled) return; // already submitted
+  if (definitionText) {
+    lastSpokenText = wordAnnouncement + " " + definitionText;
+    await waitIfPaused();
+    await speakText(definitionText);
+    if (spellingInput.disabled) return;
   }
+
+  // ── Step 3: Fetch & speak example sentence ───────────────────────────────
+  setStatus("Getting example...", false);
+  let exampleText = "";
+  try {
+    exampleText = await claudeCall(
+      `You are a spelling bee teacher. Give one short, clear example sentence using the word "${currentWord}". Do not define it. Just the sentence.`
+    );
+  } catch(e) { /* silently skip if fails */ }
+
+  if (spellingInput.disabled) return; // already submitted
+  if (exampleText) {
+    lastSpokenText = wordAnnouncement + " " + definitionText + " " + exampleText + " Please spell: " + currentWord + ".";
+    await waitIfPaused();
+    await speakText(exampleText);
+    if (spellingInput.disabled) return;
+  }
+
+  // ── Final prompt ─────────────────────────────────────────────────────────
+  await waitIfPaused();
+  await speakText(`Please spell: ${currentWord}.`);
+  if (spellingInput.disabled) return;
+
+  repeatBtn.style.display = "block";
+  setStatus("Type your spelling above and press ✓ or Enter", false);
+}
+
+async function waitIfPaused() {
+  if (!isPaused) return;
+  setStatus("Paused — press Resume to continue", false);
+  await new Promise(r => {
+    const check = setInterval(() => { if (!isPaused) { clearInterval(check); r(); } }, 200);
+  });
 }
 
 function setStatus(text, isVoice) {
