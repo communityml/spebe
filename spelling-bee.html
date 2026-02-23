@@ -330,6 +330,32 @@
 
   .history-empty { font-size: 0.8rem; color: #ccc; text-align: center; padding: 12px 0; font-style: italic; }
 
+  .voice-select-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-bottom: 12px;
+    font-size: 0.75rem;
+    color: #bbb;
+  }
+
+  .voice-select-row select {
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #9e6b00;
+    background: #fff8e1;
+    border: 2px solid #ffd54f;
+    border-radius: 10px;
+    padding: 3px 8px;
+    cursor: pointer;
+    outline: none;
+    max-width: 200px;
+  }
+
+  .voice-select-row select:focus { border-color: #ffa726; }
+
   .api-toggle {
     display: flex;
     align-items: center;
@@ -386,6 +412,9 @@
       <span class="toggle-track"></span>
     </label>
     <label for="apiToggle">Proxy</label>
+  </div>
+  <div class="voice-select-row">
+    🔊 <select id="voiceSelect"><option value="">Default voice</option></select>
   </div>
   <span class="hex-icon">🐝</span>
   <h1>Spelling Bee</h1>
@@ -3573,11 +3602,16 @@ function speakText(text) {
     utt.pitch = 1.05;
 
     const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v =>
-      v.name.includes("Samantha") || v.name.includes("Karen") ||
-      v.name.includes("Google US") || v.name.includes("en-US")
-    );
-    if (preferred) utt.voice = preferred;
+    const selectedName = document.getElementById("voiceSelect")?.value;
+    let chosenVoice = selectedName ? voices.find(v => v.name === selectedName) : null;
+    if (!chosenVoice) {
+      // fallback to preferred defaults
+      chosenVoice = voices.find(v =>
+        v.name.includes("Samantha") || v.name.includes("Karen") ||
+        v.name.includes("Google US") || v.name.includes("en-US")
+      );
+    }
+    if (chosenVoice) utt.voice = chosenVoice;
 
     isSpeaking = true;
     speakResolve = resolve;
@@ -3596,6 +3630,23 @@ function repeatWord() {
     repeatBtn.style.display = "block";
     setStatus("Type your spelling above and press ✓ or Enter", false);
   });
+}
+
+// ── Random superlatives for correct answers ───────────────────────────────────
+const SUPERLATIVES = [
+  "Brilliant!", "Fantastic!", "Spectacular!", "Nailed it!", "Perfect!",
+  "Outstanding!", "Magnificent!", "Superb!", "Excellent!", "Impressive!",
+  "Incredible!", "Phenomenal!", "Stellar!", "Wonderful!", "Dazzling!",
+  "Exceptional!", "Marvelous!", "Splendid!", "Terrific!", "Extraordinary!",
+  "Flawless!", "Genius!", "Legendary!", "Unstoppable!", "Bravo!",
+  "Champion!", "Sublime!", "Glorious!", "Radiant!", "Sensational!",
+  "Stupendous!", "Breathtaking!", "Electrifying!", "Masterful!", "Triumphant!",
+  "Wow!", "Yes!", "Boom!", "Spot on!", "Nailed it!",
+  "Gold star!", "Top marks!", "Ace!", "First rate!", "Peerless!"
+];
+
+function randomSuperlative() {
+  return SUPERLATIVES[Math.floor(Math.random() * SUPERLATIVES.length)];
 }
 
 async function checkSpelling() {
@@ -3638,7 +3689,7 @@ async function checkSpelling() {
       <span class="correct-word">${currentWord}</span>
       <span class="level-tag ${levelClass}">${LEVEL_LABELS[levelAtAnswer]}</span>
       <span style="display:block;font-size:0.85rem;margin-top:8px;opacity:0.7">Next up: ${nextLevelLabel}</span>`;
-    await speakText(`Correct! Great job spelling ${currentWord}!`);
+    await speakText(randomSuperlative());
   } else {
     resultBox.className = "result wrong";
     resultBox.innerHTML = `
@@ -3647,6 +3698,7 @@ async function checkSpelling() {
       <span class="level-tag ${levelClass}">${LEVEL_LABELS[levelAtAnswer]}</span>
       <span style="display:block;font-size:0.85rem;margin-top:8px;opacity:0.7">Next up: ${nextLevelLabel}</span>`;
     await speakText(`Not quite. The correct spelling is ${currentWord.split("").join(" ")}.`);
+    await speakText(currentWord + ".");
   }
 
   setStatus("", false);
@@ -3673,10 +3725,22 @@ async function checkSpelling() {
   }
 }
 
-// ── Preload voices ────────────────────────────────────────────────────────────
+// ── Preload & populate voice selector ────────────────────────────────────────
+function populateVoiceList() {
+  const voices = window.speechSynthesis.getVoices();
+  const sel = document.getElementById("voiceSelect");
+  if (!sel || voices.length === 0) return;
+  const current = sel.value;
+  // Only show English voices
+  const engVoices = voices.filter(v => v.lang.startsWith("en"));
+  sel.innerHTML = '<option value="">Default voice</option>' +
+    engVoices.map(v => `<option value="${v.name}"${v.name === current ? " selected" : ""}>${v.name} (${v.lang})</option>`).join("");
+}
+
 if (window.speechSynthesis) {
   window.speechSynthesis.getVoices();
-  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = populateVoiceList;
+  populateVoiceList();
 }
 
 // Show any saved history on load
