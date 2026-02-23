@@ -258,6 +258,7 @@
   .level-a { background: #c8e6c9; color: #1b5e20; }
   .level-b { background: #fff9c4; color: #f57f17; }
   .level-c { background: #fce4ec; color: #880e4f; }
+  .level-d { background: #ede7f6; color: #4a148c; }
 
   /* ── History Panel ── */
   .history-panel {
@@ -511,7 +512,11 @@
 <script>
 // ── Word Lists ────────────────────────────────────────────────────────────────
 const WORD_LISTS = {
-  a: [
+  // ── A Level — easy brain-break words ──
+  a: ["act", "add", "age", "ago", "aim", "air", "all", "arm", "art", "ask", "bag", "ball", "band", "bank", "barn", "bath", "beak", "bean", "bear", "beat", "bed", "bee", "bell", "best", "bird", "bite", "blow", "blue", "boat", "bolt", "bone", "book", "boot", "born", "both", "bowl", "brag", "bran", "bred", "brew", "bug", "bump", "bun", "burn", "bush", "buzz", "cake", "calf", "call", "calm", "camp", "cape", "card", "care", "cart", "cave", "chat", "chip", "chop", "clam", "clap", "clip", "club", "coat", "coil", "cold", "colt", "comb", "come", "cook", "cool", "corn", "cost", "cozy", "crab", "crop", "crow", "cube", "curb", "cute", "dash", "date", "dawn", "days", "deal", "deep", "deer", "den", "desk", "dew", "diet", "dime", "dine", "dirt", "dish", "dock", "dog", "dome", "door", "dove", "down", "drag", "draw", "drip", "drop", "drug", "duck", "dull", "dump", "dusk", "dust", "each", "earn", "east", "easy", "edge", "else", "even", "ever", "exam", "face", "fact", "fair", "fall", "fame", "farm", "fast", "feast", "feel", "feet", "fell", "felt", "fence", "fern", "fest", "few", "fib", "fill", "fine", "fire", "fish", "fist", "flair", "flea", "fled", "flew", "flip", "flock", "flood", "flow", "foam", "fold", "fond", "font", "food", "fool", "fork", "form", "fort", "foul", "free", "frog", "from", "front", "frost", "full", "fund", "fuzz", "gain", "game", "gave", "gaze", "gear", "gift", "give", "glee", "glow", "glue", "goal", "gold", "golf", "good", "grab", "gram", "grand", "grape", "grin", "grip", "grow", "gulf", "gust", "hair", "hand", "hang", "hard", "harm", "hatch", "have", "hawk", "haze", "head", "heap", "heat", "heel", "help", "herb", "herd", "hero", "hide", "high", "hike", "hill", "hint", "hole", "home", "hood", "hope", "horn", "hose", "host", "huge", "hunt", "hurl", "hurt", "husk", "idea", "inch", "into", "iris", "iron", "itch", "jade", "jail", "jam", "jolt", "jump", "just", "keen", "kept", "kind", "king", "kneel", "known", "lace", "lake", "lamp", "land", "lane", "last", "late", "lava", "lawn", "lead", "leaf", "leap", "left", "lend", "lens", "lick", "lift", "like", "limb", "lime", "line", "link", "lion", "list", "live", "load", "loan", "loft", "long", "loop", "lore", "lose", "lost", "loud", "love", "lure", "lush", "made", "mail", "main", "make", "mall", "malt", "mane", "many", "mark", "mast", "math", "meal", "mean", "meet", "melt", "mice", "mild", "mile", "milk", "mill", "mime", "mind", "mint", "miss", "moan", "mold", "mole", "more", "most", "much", "mule", "musk", "nail", "name", "neat", "need", "nest", "next", "nine", "node", "noon", "nope", "norm", "nose", "note", "once", "only", "open", "oval", "oven", "pack", "page", "paid", "pain", "pair", "park", "part", "past", "path", "peak", "peel", "peer", "pick", "pine", "ping", "pink", "pint", "pipe", "plan", "play", "plug", "plum", "plus", "poet", "pole", "poll", "pool", "pore", "port", "pose", "post", "pour", "prey", "prop", "pull", "pump", "pure", "push", "quit", "race", "rack", "rain", "rake", "rang", "rank", "rare", "read", "real", "reed", "reef", "reel", "rest", "rice", "ride", "ring", "rise", "risk", "road", "roam", "roar", "rode", "roll", "roof", "room", "root", "rope", "rose", "rude", "rug", "rush", "rust", "safe", "sage", "sail", "sake", "sale", "salt", "same", "sand", "sang", "sank", "sap", "save", "seed", "seek", "self", "sell", "send", "sent", "shed", "ship", "shot", "show", "shut", "sick", "side", "sift", "sign", "silk", "sing", "sink", "skip", "slam", "slap", "sled", "slim", "slip", "slow", "slug", "snap", "snow", "soap", "sock", "soft", "soil", "sole", "some", "song", "sort", "soup", "span", "spin", "spit", "spot", "stem", "step", "stir", "stop", "such", "suit", "surf", "sway", "swim", "tail", "tale", "tall", "tank", "tape", "task", "team", "tear", "tell", "tent", "test", "than", "that", "them", "then", "they", "thin", "this", "thorn", "tidy", "till", "tilt", "time", "toad", "toes", "toll", "tone", "tool", "torn", "toss", "tour", "trace", "trail", "tree", "trim", "trip", "true", "tub", "tuck", "tuft", "tune", "twig", "type", "upon", "urge", "used", "vale", "vast", "veil", "very", "vest", "vine", "void", "vote", "wade", "wage", "wake", "walk", "wall", "wand", "want", "ward", "warm", "wave", "wax", "weed", "well", "went", "were", "west", "wide", "wild", "will", "wilt", "wind", "wing", "wink", "wipe", "wire", "wise", "wish", "with", "wolf", "wood", "wool", "word", "wore", "worn", "wrap", "yawn", "yell", "your", "zero", "zest", "zinc", "zone", "zoom"],
+
+  // ── B Level (was A) ──
+  b: [
     "abandon","abruptly","accurate","acorn","admirer","admit","adrift","aloha","alpha","amazed","amazon","ambitious","americana","amigo","amphibian","amulet","angora","antennas","anyway","apology","apple","apprehensive","apron","arborio","arcade","argue","aromatherapy","around","arrogant","ascribe","ash","astonish","astute","aviation","award","axle","background","badger","bagpipe","bakery","balderdash","banana","barber","barefoot","bargain","basement","basilisk","bathtub","bauble","bawl","beagle","beam","bebop","beckon","bedlam","beeswax","behold","bellyache","benches","bestow","beverage","bias","billboard","bingo","blemish","blizzard","blooper","blouse","bobcat","bogus","bombard","bonfire","bookworm","boorish","botch","bother","boycott","brass","bribery","briefcase","brilliant","brim","bristle","broth","bubbly","buffoonery","bugaboo","bushel","butterscotch","cabbage","cabin","cactus","cajole","calico","calzone","campus","cancel","candles","canteen","caravan","carnival","carrot","cartoon","cascade","casino","caterpillar","cattail","cement","chain","chaotic","cheek","cheer","chia","chicken","chimes","chips","chowder","circle","civics","clever","cliff","climate","clodhopper","cloudy","clover","cloying","coffee","collect","companion","competitive","compilation","complaint","conductor","cone","cooking","cooperate","cough","cowlick","crate","crayon","crew","cricket","criminal","crowd","crumpet","cuckoo","cucumber","culinary","curries","cutlery","dandelion","dandruff","daresay","daughter","dauntlessly","dawdle","decade","decision","default","delicacy","demolition","deny","deodorant","deputy","desk","despicable","detention","developer","difficult","dilemma","dillydally","dimension","distinctive","distraught","divine","dodge","dojo","dollars","domineering","domino","dough","drizzle","drool","drum","dwindled","eavesdrop","ecotourism","eggplant","elderly","emerge","emotional","emperor","empty","enchantment","enfranchise","entrance","envoy","erase","erode","esteem","estimate","eternity","everglades","evince","explanation","explosive","extinct","eyelet","factoid","faculty","failure","faint","famished","famous","fantastically","farewell","farfetched","fashionista","faucet",
     {display:"favorite / favourite", alts:["favorite","favourite"]},
     "feats","fedora","ferocious","film","filters","finish","flame","flannel","flattery","flexible","flooey","flustered","flute","foothills","forage","forbidden",
@@ -525,8 +530,8 @@ const WORD_LISTS = {
     "mastiff","materialize","maximum","mayhem","measly","medallion","meekness","megahertz","mellow","melodramatic","memorandum","merchandise","metadata","meteor","methodology","midriff","migraine","mildew","militant","mince","minority","miraculous","mischief","misconception","misery","misinterpret","missile","mister","modesty","mogul","moisture","monarch","monopolize","monstrosity","monumental","moose","mortal","mosquito","motto","mouth","mower","moxie","munchkin","mundane","muscular","mutter","myself","nacho","napkin","nationalism","navigator","necklace","neigh","neon","nephew","never","newbie","noggin","normative","nourish","novelist","nuance","nuisance","number","nurture","oasis","olive","omen","omission","onion","onshore","opinionated","organic","organza","originate","ornament","ounce","outrageous","ovation","overrun","owlishly","pamper","panorama","paraphrase","parasite","pardon","parenthetic","parsley","pastel","pattern","peacenik","peach","pear","pedigree","peekaboo","peerless","pellet","pencil","penguin","peppermint","permafrost","permission","perplex","petal","pie","pieces","pigeon","pigsty","pilferer","piratical","plaintiff","pleasant","plot","plumbing","polenta","polo","poncho","pond","porridge","postpone","potato","powder","pranks","premium","primatologist","priority","pristine","privacy","problem","proof","propaganda","proper","publish","pulley","punting","puppets","purse","puzzles","quack","qualitative","quart","ragamuffin","raisin","rascal","raspberry","raven","ravine","reactionary","receptacle","recipient","reckon","recluse","recoup","recyclable","reflect","reliable","religious","relish","remedial","reply","respect","restaurant","results","rhinestone","ribbon","ripple","robin","rocket","roller","rollicking","romaine","rooster","routine","rover","rules","saga","salsa","satellite","satisfactory","savvy","sawdust","scent","scheme","science","scold","scoop","scruple","seal","season","secret","sedentary","seldom","serpentine","shadow","shake","shamrock","shebang","shield","shoo","shopaholic","shortfall","shoulder","shrimp","shrugged","silly","silver","simmer","sinus","sirloin","size","skateboard","skedaddle","skeleton","slipshod","slogan","sluggard","smiled","snarl","sniffle","snippet","snore","social","soda","sofa","software","sonar","sound","sourly","sparkle","special","spelunker","spider","spinal","splurge","spreadsheet","squall","squirm","standard","stark","stench","stencil","sticky","still","straw","stray","strong","stubble","stubborn","studio","stunts","sturdy","sundae","sunflower","supper","surefire","swallow","sweeten","swipe","sword","synthetic","system","taco","talent","tangible","tantrum","target","tarmac","tasteless","teaspoon","tennis","theme","thawed","thicket","thimblerig","third","thistle","thunderbolt","tibia","tickled","tiger","timber","timidly","tirade","toddler","tolerable","tongue","tooth","torch","toughness","towel","town","trait","trapezoid","treadmill","trencher","trendy","triumphant","trivia","troll","trope","trumpet","truth","tulip","turnip","turret","turtle","tussle","twee","twice","twinge","twirled","twisty","twitchy","ugliness","umbrella","uncle","understand","upshot","useful","vacation","vacuum","valiant","velcro","venomous","verbiage","veteran","villa","volcano","volumetric","voluntary","votive","vouch","vulpine","wafer","waited","walnut","wan","warning","wasp","water","weakness","weather","webisode","weevil","whiff","whisk","whittle","wholehearted","widget","wildcat","winnow","winsome","wistful","wombat","workhorse","worrywart","yankee","yarn","yearn","yellowfin","yeti","zebra","zither"
   ],
 
-  // ── B Level — 2092 entries, 20 alternate groups ──
-  b: [
+  // ── C Level — 2092 entries, 20 alternate groups ──
+  c: [
     "aardvark",
     "abated",
     "aberration",
@@ -2621,8 +2626,8 @@ const WORD_LISTS = {
     "étude"
   ],
 
-  // ── C Level — 711 entries, 17 alternate groups ──
-  c: [
+  // ── D Level — 711 entries, 17 alternate groups ──
+  d: [
     "a posteriori",
     "abeyance",
     "absorptive",
@@ -3337,8 +3342,8 @@ const WORD_LISTS = {
   ]
 };
 
-const LEVEL_ORDER  = ["a", "b", "c"];
-const LEVEL_LABELS = { a: "A Level", b: "B Level", c: "C Level" };
+const LEVEL_ORDER  = ["a", "b", "c", "d"];
+const LEVEL_LABELS = { a: "A Level", b: "B Level", c: "C Level", d: "D Level" };
 const MAX_HISTORY  = 50;
 const KEY_WRONG    = "spellingbee_wrong";
 const KEY_RIGHT    = "spellingbee_right";
@@ -3561,7 +3566,7 @@ async function nextRound() {
   const stale = () => roundId !== myRoundId;
 
   // ── Step 1: Say the word twice (normal + slow), input locked until after first ─
-  const wordAnnouncement = `${currentWord}.`;
+  const wordAnnouncement = `${primarySpelling(currentWord)}.`;
   lastSpokenText = wordAnnouncement;
   setStatus("", false);
   statusText.style.display = "none";
@@ -3569,7 +3574,7 @@ async function nextRound() {
   submitBtn.disabled = true;
 
   await waitIfPaused();
-  await speakText(currentWord + ".", 0.92);
+  await speakText(primarySpelling(currentWord) + ".", 0.92);
 
   // NOW unlock input — they can start typing after hearing it once
   spellingInput.disabled = false;
@@ -3579,7 +3584,7 @@ async function nextRound() {
 
   // Longer pause then say it slower — bail if already submitted
   await new Promise(r => setTimeout(r, 900));
-  if (!stale()) await speakText(currentWord + ".", getRate() * 0.65);
+  if (!stale()) await speakText(primarySpelling(currentWord) + ".", getRate() * 0.65);
 
   // ── Step 2: Fetch & speak definition ─────────────────────────────────────
   if (stale()) return;
@@ -3611,14 +3616,14 @@ async function nextRound() {
 
   if (stale()) return;
   if (exampleText) {
-    lastSpokenText = wordAnnouncement + " " + definitionText + " " + exampleText + " Please spell: " + currentWord + ".";
+    lastSpokenText = wordAnnouncement + " " + definitionText + " " + exampleText + " Please spell: " + primarySpelling(currentWord) + ".";
     await waitIfPaused();
     await speakText(exampleText);
   }
 
   // ── Final prompt ─────────────────────────────────────────────────────────
   await waitIfPaused();
-  await speakText(`Please spell: ${currentWord}.`);
+  await speakText(`Please spell: ${primarySpelling(currentWord)}.`);
   if (spellingInput.disabled) return;
 
   repeatBtn.style.display = "block";
@@ -3654,6 +3659,29 @@ function getRate(override) {
   if (override !== undefined) return override;
   const slider = document.getElementById("rateSlider");
   return slider ? parseFloat(slider.value) : 0.9;
+}
+
+// Speak a superlative with snarky energy: pause, fast+high, pause
+async function speakSuperlative(text) {
+  await new Promise(r => setTimeout(r, 220)); // brief mic-drop lead-in silence
+  await new Promise(resolve => {
+    if (!window.speechSynthesis) { resolve(); return; }
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate  = Math.min(getRate() * 1.25, 1.4); // punchy — faster than normal
+    utt.pitch = 1.35;                              // higher — ta-da energy
+    const voice = getChosenVoice();
+    if (voice) utt.voice = voice;
+    utt.onend  = resolve;
+    utt.onerror = resolve;
+    window.speechSynthesis.speak(utt);
+  });
+  await new Promise(r => setTimeout(r, 350)); // mic drop silence after
+}
+
+// For alternate spelling entries like "marvelous / marvellous", return just the first
+function primarySpelling(word) {
+  return word.split('/')[0].trim();
 }
 
 function speakText(text, rateOverride) {
@@ -3912,8 +3940,8 @@ async function checkSpelling() {
       <span class="level-tag ${levelClass}">${LEVEL_LABELS[levelAtAnswer]}</span>
       <span style="display:block;font-size:0.85rem;margin-top:8px;opacity:0.7">Next up: ${nextLevelLabel}</span>`;
     if (streak >= 3) launchConfetti();
-    await speakText("Correct. " + randomSuperlative());
-    await new Promise(r => setTimeout(r, 600));
+    await speakText("Correct.");
+    await speakSuperlative(randomSuperlative());
   } else {
     resultBox.className = "result wrong";
     resultBox.innerHTML = `
@@ -3922,7 +3950,7 @@ async function checkSpelling() {
       <span class="level-tag ${levelClass}">${LEVEL_LABELS[levelAtAnswer]}</span>
       <span style="display:block;font-size:0.85rem;margin-top:8px;opacity:0.7">Next up: ${nextLevelLabel}</span>`;
     await speakText(`Not quite. The correct spelling is ${currentWord.split("").join(" ")}.`);
-    await speakText(currentWord + ".");
+    await speakText(primarySpelling(currentWord) + ".");
   }
 
   setStatus("", false);
