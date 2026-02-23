@@ -3520,20 +3520,31 @@ async function nextRound() {
   spellingInput.focus();
   repeatBtn.style.display = "none";
 
-  // ── Step 1: Say the word immediately, no API needed ──────────────────────
+  // ── Step 1: Say the word twice (normal + slow), input locked until after first ─
   const wordAnnouncement = `${currentWord}.`;
-  lastSpokenText = wordAnnouncement; // so Repeat works from the start
+  lastSpokenText = wordAnnouncement;
   setStatus("", false);
   statusText.style.display = "none";
+  // Keep input disabled until first pronunciation done
+  spellingInput.disabled = true;
+  submitBtn.disabled = true;
 
   await waitIfPaused();
-  await speakText(wordAnnouncement);
-  if (!submitBtn.disabled) return; // interrupted
+  // Say at normal speed first
+  await speakText(currentWord + ".", 0.92);
 
-  // Enable input right after word is spoken — they can spell now
+  // NOW unlock input — they can start typing after hearing it once
+  spellingInput.disabled = false;
   submitBtn.disabled = false;
   spellingInput.placeholder = "type your spelling...";
   spellingInput.focus();
+
+  // Brief pause then say it slower — user can already be typing
+  await new Promise(r => setTimeout(r, 400));
+  if (!spellingInput.disabled || submitBtn.disabled) {
+    // Only say slow version if they haven't submitted yet
+    await speakText(currentWord + ".", 0.65);
+  }
 
   // ── Step 2: Fetch & speak definition in background ───────────────────────
   setStatus("Getting definition...", false);
@@ -3593,26 +3604,26 @@ function setStatus(text, isVoice) {
   voiceIndicator.className = "voice-indicator" + (isVoice ? " active" : "");
 }
 
-function speakText(text) {
+function getChosenVoice() {
+  const voices = window.speechSynthesis.getVoices();
+  const selectedName = document.getElementById("voiceSelect")?.value;
+  let v = selectedName ? voices.find(v => v.name === selectedName) : null;
+  if (!v) v = voices.find(v =>
+    v.name.includes("Samantha") || v.name.includes("Karen") ||
+    v.name.includes("Google US") || v.name.includes("en-US")
+  );
+  return v || null;
+}
+
+function speakText(text, rate = 0.92) {
   return new Promise(resolve => {
     if (!window.speechSynthesis) { resolve(); return; }
     window.speechSynthesis.cancel();
     const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = 0.92;
+    utt.rate = rate;
     utt.pitch = 1.05;
-
-    const voices = window.speechSynthesis.getVoices();
-    const selectedName = document.getElementById("voiceSelect")?.value;
-    let chosenVoice = selectedName ? voices.find(v => v.name === selectedName) : null;
-    if (!chosenVoice) {
-      // fallback to preferred defaults
-      chosenVoice = voices.find(v =>
-        v.name.includes("Samantha") || v.name.includes("Karen") ||
-        v.name.includes("Google US") || v.name.includes("en-US")
-      );
-    }
-    if (chosenVoice) utt.voice = chosenVoice;
-
+    const voice = getChosenVoice();
+    if (voice) utt.voice = voice;
     isSpeaking = true;
     speakResolve = resolve;
     lastSpokenText = text;
@@ -3621,6 +3632,14 @@ function speakText(text) {
     utt.onerror= () => { isSpeaking = false; speakResolve = null; resolve(); };
     window.speechSynthesis.speak(utt);
   });
+}
+
+// Speak a word twice: normal speed, brief pause, then slower
+async function speakWordTwice(word) {
+  await speakText(word + ".", 0.92);
+  // 400ms pause between the two pronunciations
+  await new Promise(r => setTimeout(r, 400));
+  await speakText(word + ".", 0.65);
 }
 
 function repeatWord() {
@@ -3634,15 +3653,131 @@ function repeatWord() {
 
 // ── Random superlatives for correct answers ───────────────────────────────────
 const SUPERLATIVES = [
-  "Brilliant!", "Fantastic!", "Spectacular!", "Nailed it!", "Perfect!",
-  "Outstanding!", "Magnificent!", "Superb!", "Excellent!", "Impressive!",
-  "Incredible!", "Phenomenal!", "Stellar!", "Wonderful!", "Dazzling!",
-  "Exceptional!", "Marvelous!", "Splendid!", "Terrific!", "Extraordinary!",
-  "Flawless!", "Genius!", "Legendary!", "Unstoppable!", "Bravo!",
-  "Champion!", "Sublime!", "Glorious!", "Radiant!", "Sensational!",
-  "Stupendous!", "Breathtaking!", "Electrifying!", "Masterful!", "Triumphant!",
-  "Wow!", "Yes!", "Boom!", "Spot on!", "Nailed it!",
-  "Gold star!", "Top marks!", "Ace!", "First rate!", "Peerless!"
+  // Classic
+  "Brilliant!", "Fantastic!", "Spectacular!", "Perfect!", "Outstanding!",
+  "Magnificent!", "Superb!", "Excellent!", "Impressive!", "Incredible!",
+  "Phenomenal!", "Stellar!", "Wonderful!", "Dazzling!", "Exceptional!",
+  "Marvelous!", "Splendid!", "Terrific!", "Extraordinary!", "Flawless!",
+  "Legendary!", "Unstoppable!", "Sublime!", "Glorious!", "Sensational!",
+  "Stupendous!", "Breathtaking!", "Masterful!", "Triumphant!",
+  "Top marks!", "First rate!", "Peerless!", "Ace!", "Gold star!",
+  // Short punchy
+  "Boom!", "Yes!", "Nailed it!", "Spot on!", "Bingo!",
+  "Crushed it!", "Owned it!", "Smashed it!", "Killed it!",
+  "Aced it!", "Boom goes the dynamite!",
+  // Silly & goofy
+  "Holy moly!", "Great googly moogly!", "You absolute wizard!",
+  "Drop the mic!", "Spelling royalty!", "Shakespeare would be proud!",
+  "Webster is weeping with joy!", "You magnificent speller!",
+  "The dictionary bows to you!", "Spell-tastic!", "Spellbinding!",
+  "Spell-ebrity!", "Are you even human?!", "Sorcery!",
+  "That was pure magic!", "You are on fire!", "Unbelievable!",
+  "Stop showing off!", "Too easy for you!", "Were you born spelling?",
+  "Your brain is enormous!", "Big brain energy!", "Huge!",
+  "That's what I'm talking about!", "Easy peasy!", "Like a hot knife through butter!",
+  "Mic drop!", "Did you practice or are you just that good?",
+  "The crowd goes wild!", "Ten out of ten!", "Chef's kiss!",
+  "Absolutely diabolical spelling skills!", "You're unreal!",
+  "I'm telling everyone about this!", "Frame that one!",
+  "Future spelling bee champion!", "Call the newspapers!",
+  "Your spelling teacher is somewhere crying happy tears!",
+  // 100 more
+  "Absolutely gobsmacking!", "A-plus-plus-plus!", "Alert the media!",
+  "Astounding!", "Atomic!", "Award winning!", "Beyond reproach!", "Blazing!",
+  "Bodacious!", "Brain the size of a planet!", "Bringing down the house!",
+  "Canonical!", "Can't be stopped!", "Certified genius!",
+  "Clean as a whistle!", "Colossal!", "Completely unhinged talent!",
+  "Confoundingly good!", "Dangerously smart!", "Dazzled and amazed!",
+  "Defying all logic!", "Delightfully devastating!", "Devastating accuracy!",
+  "Did you swallow a dictionary?", "Disgustingly talented!", "Elite!",
+  "Enchanting!", "Enormous brain detected!", "Exquisite!", "Eye-watering!",
+  "Fabulous!", "Ferociously good!", "Fist pump!", "Flying colors!",
+  "Formidable!", "Full marks!", "Genuinely unbelievable!", "Gloriously done!",
+  "Go off!", "Goosebumps!", "Grand slam!", "Hall of fame stuff!", "Hat trick!",
+  "Have you considered going pro?", "Heroic!", "High five to you!", "Historic!",
+  "Honestly embarrassing how good that was!", "How are you this good?!",
+  "Hypnotic!", "I am shook!", "I bow to you!", "I cannot even!", "I'm speechless!",
+  "Immaculate!", "Impeccable!", "In a class of your own!", "Incandescent!",
+  "Insane!", "Jaw-dropping!", "Just extraordinary!", "Keep being amazing!",
+  "Knockout!", "Landmark!", "Leave some talent for the rest of us!",
+  "Let's gooo!", "Lightning fast brain!", "Like you've done this before!",
+  "Limitless!", "Luminous!", "Mind-blowing!", "Mint condition!", "Miraculous!",
+  "Mondo!", "Monumental!", "Mwah!", "Next level!", "Nice one!", "No notes!",
+  "Nobel Prize in Spelling!", "Not even close — you won!",
+  "Oh my goodness!", "Oh snap!", "Oh wow!", "On a different planet!",
+  "On another level!", "On fire!", "Out of this world!", "Outstanding human!",
+  "Overpowered!", "Overwhelmingly good!", "Perfection personified!",
+  "Pinch me I'm dreaming!", "Positively radiant!", "Preposterous talent!",
+  "Prodigious!", "Pure class!", "Ridiculously talented!", "Scintillating!",
+  "Show-off!", "Simply majestic!", "Slaying!", "Smoother than butter!",
+  "Snaps all around!", "So clean it hurts!", "Spells like a champion!",
+  "Standing ovation!", "Straight fire!", "Sublime execution!",
+  "That's the one!", "The letters feared you!", "Thunderous!", "Tip top!",
+  "Titanic talent!", "Top shelf!", "Transcendent!", "Truly something else!",
+  "Turbo-charged brain!", "Unmatched!", "Utterly dominant!", "Virtuoso!",
+  "Well I never!", "What a human!", "Whoa nelly!", "Wicked smart!",
+  "With room to spare!", "Wizardry!", "World class!",
+  "Zesty and correct!", "Zero doubts!",
+  // Gen Z / internet culture
+  "Bro cooked.", "That's actually insane.", "Okayyy, main character.",
+  "Lowkey goated.", "Not you being right.", "Wait, that ate.",
+  "That's wild.", "Bro did the math.", "That's kinda crazy.",
+  "Certified genius moment.", "The prophecy was fulfilled.", "Lore accurate.",
+  "Canon event.", "That was so real.", "Bro unlocked a new level.",
+  "Plot twist master.", "That's actually fire.", "NPCs are shaking.",
+  "XP gained.", "Achievement unlocked.", "Clutched.",
+  "That was OP.", "W moment.", "That's a W.",
+  "Bro just speedran that.", "As you should.", "Okay, Einstein.",
+  "Calculated.", "That tracks.", "We love to see it.",
+  "Elite behavior.", "She understood the assignment.", "Wait, she kinda slayed that.",
+  "That's giving genius.", "I fear you snapped.", "Stop, that's iconic.",
+  "Oh she ate that up.", "And did.", "Exactly that.",
+  "Say it louder.", "Actually though.", "Heavy on that.",
+  "No because why is that right.", "She said what needed to be said.", "Let her cook.",
+  "Wait, that's kinda valid.", "This is your Roman Empire.", "Unreal behavior.",
+  "Built different.", "Different breed.", "She locked in.",
+  "Locked in fr.", "That was lowkey surgical.", "You clocked that.",
+  "You cracked the code.", "Wait that was clean.", "That was smooth.",
+  "That was crisp.", "Precision.", "Textbook.",
+  "Academic weapon.", "She's operating on another level.", "Mind unlocked.",
+  "That was devious (in a good way).", "The mastermind reveal.", "Chess not checkers.",
+  "Strategic queen.", "Wait that's big brain.", "Massive brain energy.",
+  "The braincells aligned.", "Divine timing.", "Manifested.",
+  "Plot armor.", "You manifested that.", "Main character energy.",
+  "Lore just expanded.", "The writers cooked.", "Scripted.",
+  "That was cinematic.", "IMAX moment.", "Slow clap.",
+  "Applause.", "Give her the trophy.", "Put it in the Hall of Fame.",
+  "Add it to the highlight reel.", "Clip that.", "Replay that.",
+  "Instant replay.", "That deserves a montage.", "That was a flex.",
+  "Subtle flex.", "Not the subtle flex.", "I see you.",
+  "Go off then.", "Go crazy.", "Okay strategist.",
+  "Okay mastermind.", "Okay professor.", "Okay queen.",
+  "Okay legend.", "Mini legend.", "Future CEO.",
+  "Future Nobel Prize.", "Actually unstoppable.", "Untouchable.",
+  "Peak performance.", "Maxed out.", "Fully optimized.",
+  "Brain at 100%.", "She said let me lock in.", "Lock in era.",
+  "New era unlocked.", "Villain arc complete.", "Hero arc complete.",
+  "Redemption arc.", "Training arc success.", "That was tactical.",
+  "That was elite timing.", "Perfect execution.", "Flawless victory.",
+  "You cleared.", "Cleared with ease.", "Cleared effortlessly.",
+  "That was low-diff.", "Zero hesitation.", "No hesitation.",
+  "Instant.", "Automatic.", "She didn't even blink.",
+  "Clocked.", "Case closed.", "Debate ended.",
+  "End of discussion.", "Nothing further.", "Mic imaginary drop.",
+  "Cue dramatic music.", "Insert applause here.", "Freeze frame moment.",
+  "And scene.", "Roll credits.", "The end screen popped up.",
+  "Victory screen unlocked.", "Boss battle cleared.", "Final level energy.",
+  "Speedrun complete.", "High score.", "Leaderboard status.",
+  "Certified moment.", "This will be studied.", "Historians will note this.",
+  "Write that down.", "Put that in the yearbook.", "Put that on a T-shirt.",
+  "Put it on the fridge.", "Screenshot that.", "Save that.",
+  "Pin that.", "Highlight that.", "Bookmark that.",
+  "Add it to the lore.", "Museum-worthy.", "Legendary drop.",
+  "Rare footage.", "Limited edition brainpower.", "Premium thinking.",
+  "Deluxe edition response.", "Ultra instinct.", "Galaxy brain.",
+  "Multiverse confirmed.", "That shifted the timeline.", "Timeline altered.",
+  "Butterfly effect unlocked.", "Reality adjusted.", "Gravity shifted.",
+  "Universe nodded.",
 ];
 
 function randomSuperlative() {
@@ -3689,7 +3824,8 @@ async function checkSpelling() {
       <span class="correct-word">${currentWord}</span>
       <span class="level-tag ${levelClass}">${LEVEL_LABELS[levelAtAnswer]}</span>
       <span style="display:block;font-size:0.85rem;margin-top:8px;opacity:0.7">Next up: ${nextLevelLabel}</span>`;
-    await speakText(randomSuperlative());
+    await speakText("Correct. " + randomSuperlative());
+    await new Promise(r => setTimeout(r, 600));
   } else {
     resultBox.className = "result wrong";
     resultBox.innerHTML = `
