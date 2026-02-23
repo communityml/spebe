@@ -356,6 +356,35 @@
 
   .voice-select-row select:focus { border-color: #ffa726; }
 
+  .rate-slider-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 0.85rem;
+  }
+
+  .rate-slider-row input[type=range] {
+    -webkit-appearance: none;
+    width: 110px;
+    height: 6px;
+    border-radius: 4px;
+    background: linear-gradient(to right, #ffd54f, #ffa726);
+    outline: none;
+    cursor: pointer;
+  }
+
+  .rate-slider-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: #ffa726;
+    border: 2px solid white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    cursor: pointer;
+  }
+
   .api-toggle {
     display: flex;
     align-items: center;
@@ -415,6 +444,9 @@
   </div>
   <div class="voice-select-row">
     🔊 <select id="voiceSelect"><option value="">Default voice</option></select>
+  </div>
+  <div class="rate-slider-row">
+    🐢 <input type="range" id="rateSlider" min="0.5" max="1.1" step="0.05" value="0.9"> 🐇
   </div>
   <span class="hex-icon">🐝</span>
   <h1>Spelling Bee</h1>
@@ -3320,6 +3352,7 @@ let total            = 0;
 let isSpeaking       = false;
 let lastSpokenText   = "";
 let speakResolve     = null;
+let streak           = 0;
 let targetedWord     = null;   // word clicked from history
 let levelBeforeTarget = null;  // restore after targeted round
 let isPaused         = false;
@@ -3500,9 +3533,13 @@ async function claudeCall(prompt) {
 }
 
 // ── Speed Run nextRound ───────────────────────────────────────────────────────
+// roundId increments each round — async callbacks check if they're still current
+let roundId = 0;
+
 async function nextRound() {
   round++;
   roundNum.textContent = round;
+  const myRoundId = ++roundId; // capture this round's ID
 
   if (targetedWord) {
     currentWord = targetedWord;
@@ -3520,17 +3557,18 @@ async function nextRound() {
   spellingInput.focus();
   repeatBtn.style.display = "none";
 
+  // Helper: returns true if this round has been superseded (user submitted or new round started)
+  const stale = () => roundId !== myRoundId;
+
   // ── Step 1: Say the word twice (normal + slow), input locked until after first ─
   const wordAnnouncement = `${currentWord}.`;
   lastSpokenText = wordAnnouncement;
   setStatus("", false);
   statusText.style.display = "none";
-  // Keep input disabled until first pronunciation done
   spellingInput.disabled = true;
   submitBtn.disabled = true;
 
   await waitIfPaused();
-  // Say at normal speed first
   await speakText(currentWord + ".", 0.92);
 
   // NOW unlock input — they can start typing after hearing it once
@@ -3539,14 +3577,12 @@ async function nextRound() {
   spellingInput.placeholder = "type your spelling...";
   spellingInput.focus();
 
-  // Brief pause then say it slower — user can already be typing
-  await new Promise(r => setTimeout(r, 400));
-  if (!spellingInput.disabled || submitBtn.disabled) {
-    // Only say slow version if they haven't submitted yet
-    await speakText(currentWord + ".", 0.65);
-  }
+  // Longer pause then say it slower — bail if already submitted
+  await new Promise(r => setTimeout(r, 900));
+  if (!stale()) await speakText(currentWord + ".", getRate() * 0.65);
 
-  // ── Step 2: Fetch & speak definition in background ───────────────────────
+  // ── Step 2: Fetch & speak definition ─────────────────────────────────────
+  if (stale()) return;
   setStatus("Getting definition...", false);
   let definitionText = "";
   try {
@@ -3556,15 +3592,15 @@ async function nextRound() {
     );
   } catch(e) { /* silently skip if fails */ }
 
-  if (!submitBtn.disabled && spellingInput.disabled) return; // already submitted
+  if (stale()) return;
   if (definitionText) {
     lastSpokenText = wordAnnouncement + " " + definitionText;
     await waitIfPaused();
     await speakText(definitionText);
-    if (spellingInput.disabled) return;
   }
 
   // ── Step 3: Fetch & speak example sentence ───────────────────────────────
+  if (stale()) return;
   setStatus("Getting example...", false);
   let exampleText = "";
   try {
@@ -3573,12 +3609,11 @@ async function nextRound() {
     );
   } catch(e) { /* silently skip if fails */ }
 
-  if (spellingInput.disabled) return; // already submitted
+  if (stale()) return;
   if (exampleText) {
     lastSpokenText = wordAnnouncement + " " + definitionText + " " + exampleText + " Please spell: " + currentWord + ".";
     await waitIfPaused();
     await speakText(exampleText);
-    if (spellingInput.disabled) return;
   }
 
   // ── Final prompt ─────────────────────────────────────────────────────────
@@ -3615,12 +3650,18 @@ function getChosenVoice() {
   return v || null;
 }
 
-function speakText(text, rate = 0.92) {
+function getRate(override) {
+  if (override !== undefined) return override;
+  const slider = document.getElementById("rateSlider");
+  return slider ? parseFloat(slider.value) : 0.9;
+}
+
+function speakText(text, rateOverride) {
   return new Promise(resolve => {
     if (!window.speechSynthesis) { resolve(); return; }
     window.speechSynthesis.cancel();
     const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = rate;
+    utt.rate = getRate(rateOverride);
     utt.pitch = 1.05;
     const voice = getChosenVoice();
     if (voice) utt.voice = voice;
@@ -3634,12 +3675,11 @@ function speakText(text, rate = 0.92) {
   });
 }
 
-// Speak a word twice: normal speed, brief pause, then slower
+// Speak a word twice: slider speed, longer pause, then slower
 async function speakWordTwice(word) {
-  await speakText(word + ".", 0.92);
-  // 400ms pause between the two pronunciations
-  await new Promise(r => setTimeout(r, 400));
-  await speakText(word + ".", 0.65);
+  await speakText(word + ".");
+  await new Promise(r => setTimeout(r, 900));
+  await speakText(word + ".", getRate() * 0.65);
 }
 
 function repeatWord() {
@@ -3784,10 +3824,57 @@ function randomSuperlative() {
   return SUPERLATIVES[Math.floor(Math.random() * SUPERLATIVES.length)];
 }
 
+
+// ── Confetti burst on streak ──────────────────────────────────────────────────
+function launchConfetti() {
+  const canvas = document.createElement("canvas");
+  canvas.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999";
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const colors = ["#ffd54f","#ffa726","#ff7043","#66bb6a","#42a5f5","#ab47bc","#ef5350","#26c6da"];
+  const pieces = Array.from({length: 120}, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * -canvas.height * 0.5,
+    w: 8 + Math.random() * 8,
+    h: 5 + Math.random() * 5,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    angle: Math.random() * Math.PI * 2,
+    spin: (Math.random() - 0.5) * 0.2,
+    vx: (Math.random() - 0.5) * 4,
+    vy: 2 + Math.random() * 4,
+    alpha: 1,
+  }));
+
+  let frame;
+  const tick = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let alive = false;
+    for (const p of pieces) {
+      p.x += p.vx; p.y += p.vy; p.angle += p.spin;
+      if (p.y > canvas.height * 0.7) p.alpha -= 0.025;
+      if (p.alpha > 0) alive = true;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.alpha);
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.restore();
+    }
+    if (alive) frame = requestAnimationFrame(tick);
+    else canvas.remove();
+  };
+  frame = requestAnimationFrame(tick);
+}
+
 async function checkSpelling() {
   const guess = spellingInput.value.trim().toLowerCase();
   if (!guess || spellingInput.disabled) return;
 
+  roundId++; // invalidate any in-flight definition/example fetches for this round
   spellingInput.disabled = true;
   submitBtn.disabled = true;
   total++;
@@ -3795,7 +3882,7 @@ async function checkSpelling() {
   const entry = findEntry(currentWord);
   const normGuess = normalizeSpelling(guess);
   const isCorrect = entryAlts(entry).includes(normGuess);
-  if (isCorrect) correct++;
+  if (isCorrect) { correct++; streak++; } else { streak = 0; }
 
   document.getElementById("scoreCorrect").textContent = correct;
   document.getElementById("scoreTotal").textContent = total;
@@ -3824,6 +3911,7 @@ async function checkSpelling() {
       <span class="correct-word">${currentWord}</span>
       <span class="level-tag ${levelClass}">${LEVEL_LABELS[levelAtAnswer]}</span>
       <span style="display:block;font-size:0.85rem;margin-top:8px;opacity:0.7">Next up: ${nextLevelLabel}</span>`;
+    if (streak >= 3) launchConfetti();
     await speakText("Correct. " + randomSuperlative());
     await new Promise(r => setTimeout(r, 600));
   } else {
