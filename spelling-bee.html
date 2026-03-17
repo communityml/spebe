@@ -416,6 +416,39 @@
     cursor: pointer;
   }
 
+  .mode-tabs {
+    display: flex;
+    background: #fff8e1;
+    border: 2px solid #ffd54f;
+    border-radius: 14px;
+    padding: 4px;
+    gap: 3px;
+    margin-bottom: 16px;
+  }
+
+  .mode-tab {
+    flex: 1;
+    padding: 8px 6px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: #9e6b00;
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+    letter-spacing: 0.3px;
+    transform: none;
+  }
+
+  .mode-tab.active {
+    background: #ffa726;
+    color: white;
+    box-shadow: 0 2px 8px rgba(255,167,38,0.4);
+  }
+
+  .mode-tab:hover:not(.active):not(:disabled) { background: #fff3cd; }
+  .mode-tab:disabled { opacity: 0.5; cursor: not-allowed; }
 
 </style>
 </head>
@@ -432,9 +465,15 @@
   <span class="hex-icon">🐝</span>
   <h1>Spelling Bee</h1>
   <p class="subtitle">Listen carefully and spell the word!</p>
-  <a href="link.html" class="custom-list-link">Custom Word List</a>
 
-  <div id="customBanner" class="custom-banner" style="display:none"></div>
+  <div class="mode-tabs" id="modeTabs">
+    <button class="mode-tab active" id="mode-champions" onclick="setMode('champions')">Champions</button>
+    <button class="mode-tab" id="mode-5th" onclick="setMode('5th')">5th Grade</button>
+    <button class="mode-tab" id="mode-custom" onclick="setMode('custom')">Custom</button>
+  </div>
+  <a href="link.html" class="custom-list-link" id="customListLink" style="display:none">Make a custom list →</a>
+
+  <div id="customBanner" class="custom-banner" style="display:none">Custom selected</div>
 
   <div id="roundBadge" class="round-badge" style="display:none">Round <span id="roundNum">1</span></div>
 
@@ -512,6 +551,578 @@ let customWords = null;
     }
   } catch {}
 })();
+
+// ── Game mode ─────────────────────────────────────────────────────────────────
+let gameMode = customWords ? 'custom' : 'champions';
+
+// ── 5th Grade word list ───────────────────────────────────────────────────────
+const FIFTH_GRADE_WORDS = [...new Set(`abilities
+absence
+accepted
+activity
+affordable
+aim
+allergic
+although
+ambulance
+amuse
+amusing
+angle
+apparently
+appearance
+applause
+applied
+appoint
+astronaut
+astronomer
+atlas
+attraction
+autograph
+automatic
+automobile
+azure
+balance
+bamboo
+barge
+barrel
+batch
+batches
+bawl
+bearable
+beetle
+beliefs
+biweekly
+bicycle
+bisect
+binoculars
+blizzard
+blurt
+bottomless
+boundary
+booth
+bride
+brilliance
+bruise
+brought
+bushel
+butcher
+capable
+captain
+casual
+cattle
+caution
+cautious
+cavern
+ceaseless
+centimeter
+centipede
+century
+cereal
+chart
+chuckle
+clause
+clothes
+closet
+coarse
+coach
+coastal
+coil
+collapsible
+combat
+comet
+comfortable
+committee
+compact
+complicated
+completely
+concentrate
+concentration
+conduct
+conflict
+confuse
+confusion
+connect
+correction
+correct
+council
+counsel
+countries
+course
+crooks
+crater
+creature
+cruel
+current
+currant
+cycle
+cyclone
+danger
+darkness
+dawdle
+decent
+decorate
+decoration
+dentist
+dependence
+desert
+deserved
+destruction
+diameter
+diary
+diet
+difficulty
+difficulties
+dinner
+disconnect
+discourage
+discomfort
+discuss
+discussion
+dishonest
+dismiss
+distance
+disturbance
+doubt
+doubting
+douse
+dove
+doom
+dripping
+duty
+eagle
+echo
+eddies
+effortless
+elect
+election
+emptiness
+encounter
+endless
+enjoyable
+entertain
+entrance
+environment
+equal
+eruption
+estimate
+estimation
+eventually
+excite
+excuse
+exhaust
+exhaustion
+export
+extract
+fable
+fairground
+fangs
+fare
+faucet
+fearless
+feature
+few
+fierceness
+fifteen
+finally
+flawless
+flare
+fling
+folks
+fondness
+footprint
+force
+forbidden
+forgiveness
+fortune
+foul
+foundation
+founder
+fracture
+fragment
+frighten
+fuel
+fullness
+furious
+fury
+gesture
+gigantic
+gladness
+global
+goggles
+governor
+gracious
+greed
+greet
+grind
+grouchy
+grownup
+guess
+gush
+handbook
+harmless
+harsh
+heap
+heart
+hesitance
+hoof
+hooks
+hopeless
+hospital
+humor
+hue
+identities
+ignorance
+impress
+impression
+import
+importance
+impossible
+inexpensive
+indefinite
+injustice
+injured
+insert
+inspect
+inspector
+intermission
+invisible
+jogger
+jogging
+joint
+journal
+jut
+kettle
+kennel
+label
+labor
+lashes
+laugh
+laughable
+laughter
+lawyer
+lead
+learning
+lecture
+legal
+lengthen
+liberties
+likable
+linen
+listen
+local
+locate
+location
+lose
+losses
+lunar
+lurch
+lurk
+manner
+manor
+margin
+marsh
+marvel
+measure
+mechanic
+mechanical
+medal
+meander
+meaningless
+meteor
+microscopic
+midterm
+minute
+misguide
+misjudge
+mistaken
+mission
+mixture
+moisture
+motionless
+mountain
+mouthful
+mute
+myth
+mythical
+nature
+needless
+nerve
+nick
+nozzle
+nonspecific
+notch
+notches
+noble
+ocean
+oak
+Olympics
+overwhelm
+paid
+panic
+parasol
+pasture
+paste
+pattern
+peer
+peddler
+perform
+performance
+permits
+persistence
+photograph
+photography
+phonics
+pier
+pigment
+pillar
+piano
+plume
+pole
+poll
+portable
+position
+possibilities
+possible
+potatoes
+practical
+pray
+prey
+presence
+presents
+pressure
+pretzel
+preview
+prewash
+prejudge
+preheats
+pride
+profile
+progress
+promise
+proof
+prove
+punish
+qualify
+qualified
+radiance
+radio
+rancher
+rarely
+rattlers
+reach
+recent
+referee
+refreeze
+referred
+regain
+regretted
+reliable
+relied
+reluctance
+renewing
+replenish
+reptiles
+research
+residence
+respect
+return
+reuse
+reunite
+review
+riot
+rodeo
+rough
+roughness
+royal
+ruin
+runner
+saddle
+sadness
+safety
+salute
+sample
+sandal
+saucer
+scan
+scarcely
+scrawny
+searcher
+serious
+settle
+several
+shatter
+shave
+she'd
+shirt
+shouldn't
+signal
+sickness
+sensible
+sentence
+separate
+shiver
+simple
+skimming
+skimmed
+sleep
+slogan
+smoky
+soothe
+source
+southern
+space
+spice
+splendor
+spout
+sprouts
+squirm
+squirt
+stable
+stationary
+stationery
+stern
+stomach
+stout
+stretch
+stretcher
+string
+strong
+student
+submerge
+substance
+subtract
+subtraction
+submit
+subject
+suitable
+summon
+sunlight
+super
+surf
+surroundings
+swerve
+sword
+system
+table
+taxes
+teacher
+telephone
+telegraph
+telephoto
+telescope
+television
+temperature
+tenth
+territory
+terrace
+terrible
+thankful
+that's
+their
+theme
+there's
+they're
+thirst
+thorn
+threatening
+through
+throw
+thunder
+tire
+tow
+tractor
+transport
+transportation
+treasure
+triangle
+trial
+triplet
+tripod
+tricycle
+trio
+triple
+trouble
+turmoil
+turquoise
+type
+unaware
+unbelievable
+uncomfortable
+unfinished
+uniform
+unify
+union
+unison
+unicycle
+unimportant
+unreasonable
+unusual
+usable
+usually
+valley
+vapor
+verse
+video
+view
+vocal
+voice
+waste
+waist
+wasn't
+we'll
+we've
+we're
+weakness
+weather
+week
+weight
+welcome
+weren't
+what's
+wheel
+where
+whether
+which
+while
+whisper
+white
+whole
+whose
+window
+winter
+without
+woman
+women
+wonder
+word
+work
+world
+would
+wouldn't
+write
+writer
+wrong
+yearns
+yolk
+you're
+you've
+zeroes`.trim().split('\n').map(w => w.trim()).filter(Boolean))];
+
+// ── Mode switcher ─────────────────────────────────────────────────────────────
+function setMode(mode) {
+  gameMode = mode;
+  document.querySelectorAll('.mode-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('mode-' + mode).classList.add('active');
+  const banner = document.getElementById('customBanner');
+  const customLink = document.getElementById('customListLink');
+  if (mode === 'custom') {
+    banner.style.display = 'block';
+    customLink.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
+    customLink.style.display = 'none';
+  }
+}
 
 // ── Word Lists (loaded from backend on init) ──────────────────────────────────
 let WORD_LISTS = { a: [], b: [], c: [], d: [] };
@@ -668,7 +1279,7 @@ function findEntry(display) {
 }
 
 function changeLevel(wasCorrect) {
-  if (customWords) return; // custom lists stay at level a
+  if (gameMode !== 'champions') return; // only champions uses adaptive levels
   const idx = LEVEL_ORDER.indexOf(currentLevel);
   currentLevel = wasCorrect
     ? LEVEL_ORDER[Math.min(idx + 1, LEVEL_ORDER.length - 1)]
@@ -678,12 +1289,17 @@ function changeLevel(wasCorrect) {
 async function startGame() {
   startBtn.disabled = true;
 
-  if (customWords) {
+  if (gameMode === 'custom') {
+    if (!customWords || customWords.length === 0) {
+      alert("No custom word list loaded. Use the link generator to create one.");
+      startBtn.disabled = false;
+      return;
+    }
     WORD_LISTS = { a: customWords, b: [], c: [], d: [] };
     updateWordCounts();
-    const banner = document.getElementById('customBanner');
-    banner.textContent = `Custom list: ${customWords.length} word${customWords.length !== 1 ? 's' : ''}`;
-    banner.style.display = 'block';
+  } else if (gameMode === '5th') {
+    WORD_LISTS = { a: FIFTH_GRADE_WORDS, b: [], c: [], d: [] };
+    updateWordCounts();
   } else {
     startBtn.textContent = "Loading words...";
     try {
@@ -698,6 +1314,9 @@ async function startGame() {
       return;
     }
   }
+
+  // Lock mode tabs once game starts
+  document.querySelectorAll('.mode-tab').forEach(b => b.disabled = true);
 
   startBtn.style.display = "none";
   pauseBtn.style.display = "block";
@@ -1176,6 +1795,9 @@ if (window.speechSynthesis) {
 
 // Show any saved history on load
 renderHistory();
+
+// Initialise mode (e.g. if arriving via a ?w= custom link)
+setMode(gameMode);
 
 // Word counts (called after word lists load)
 function updateWordCounts() {
