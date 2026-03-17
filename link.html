@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spelling Bee — Custom Word List</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: #fef9e7;
+    background-image: radial-gradient(circle at 20% 20%, #fff3b0 0%, transparent 50%),
+                      radial-gradient(circle at 80% 80%, #ffe082 0%, transparent 50%);
+    font-family: 'Nunito', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 20px;
+    gap: 24px;
+  }
+
+  .hive {
+    background: white;
+    border-radius: 32px;
+    padding: 48px 40px;
+    max-width: 520px;
+    width: 100%;
+    box-shadow: 0 8px 40px rgba(255,179,0,0.25), 0 2px 8px rgba(0,0,0,0.06);
+    border: 3px solid #ffd54f;
+    text-align: center;
+  }
+
+  .hex-icon {
+    font-size: 64px;
+    line-height: 1;
+    margin-bottom: 8px;
+    display: block;
+    animation: bob 2s ease-in-out infinite;
+  }
+
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  h1 {
+    font-family: 'Fredoka One', cursive;
+    font-size: 2.4rem;
+    color: #e65100;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    color: #9e6b00;
+    font-size: 0.95rem;
+    margin-bottom: 28px;
+    font-weight: 600;
+  }
+
+  .instructions {
+    font-size: 0.85rem;
+    color: #7d5a00;
+    background: #fff8e1;
+    border: 2px solid #ffd54f;
+    border-radius: 14px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    text-align: left;
+    line-height: 1.6;
+  }
+
+  textarea {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 1rem;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 600;
+    border: 3px solid #ffd54f;
+    border-radius: 16px;
+    outline: none;
+    background: #fffde7;
+    color: #3e2723;
+    resize: vertical;
+    min-height: 180px;
+    transition: border-color 0.2s;
+    line-height: 1.6;
+  }
+
+  textarea:focus { border-color: #ffa726; }
+
+  .word-count {
+    font-size: 0.8rem;
+    color: #9e6b00;
+    font-weight: 700;
+    text-align: right;
+    margin-top: 6px;
+    margin-bottom: 16px;
+  }
+
+  button {
+    padding: 14px 24px;
+    background: #ffa726;
+    color: white;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem;
+    border: none;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    letter-spacing: 0.5px;
+  }
+
+  button:hover:not(:disabled) { background: #fb8c00; transform: translateY(-1px); }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .generate-btn { width: 100%; padding: 16px; font-size: 1.2rem; border-radius: 20px; }
+
+  .output-box {
+    display: none;
+    margin-top: 20px;
+    background: #e8f5e9;
+    border: 2px solid #a5d6a7;
+    border-radius: 16px;
+    padding: 16px 18px;
+    text-align: left;
+  }
+
+  .output-label {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1rem;
+    color: #2e7d32;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .output-link {
+    display: block;
+    word-break: break-all;
+    font-size: 0.8rem;
+    color: #1b5e20;
+    font-weight: 700;
+    text-decoration: none;
+    background: #f1f8e9;
+    border: 1px solid #a5d6a7;
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    font-family: monospace;
+  }
+
+  .output-link:hover { background: #dcedc8; }
+
+  .copy-btn {
+    background: #66bb6a;
+    font-size: 0.9rem;
+    padding: 8px 18px;
+  }
+  .copy-btn:hover:not(:disabled) { background: #43a047; }
+  .copy-btn.copied { background: #388e3c; }
+
+  .back-link {
+    display: block;
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 2px solid #fff3e0;
+    color: #e65100;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-decoration: none;
+    opacity: 0.7;
+  }
+  .back-link:hover { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="hive">
+  <span class="hex-icon">🐝</span>
+  <h1>Custom Word List</h1>
+  <p class="subtitle">Build a spelling bee for someone special</p>
+
+  <div class="instructions">
+    Enter one word or phrase per line. The recipient only gets a link — they won't see the word list until they're spelled. Your draft is saved automatically.
+  </div>
+
+  <textarea id="wordInput" placeholder="elephant&#10;necessary&#10;encyclopedia&#10;..."></textarea>
+  <div class="word-count" id="wordCount">0 words</div>
+
+  <button class="generate-btn" onclick="generateLink()">Generate Link 🔗</button>
+
+  <div class="output-box" id="output">
+    <span class="output-label">Share this link:</span>
+    <a class="output-link" id="gameLink" href="" target="_blank"></a>
+    <button class="copy-btn" id="copyBtn" onclick="copyLink()">Copy Link</button>
+  </div>
+
+  <a href="spelling-bee.html" class="back-link">← Play Spelling Bee</a>
+</div>
+
+<script>
+const LS_KEY = 'spellingbee_custom_words_draft';
+
+function rot13(s) {
+  return s.replace(/[a-zA-Z]/g, c => {
+    const b = c <= 'Z' ? 65 : 97;
+    return String.fromCharCode(((c.charCodeAt(0) - b + 13) % 26) + b);
+  });
+}
+
+function canonicalize(w) {
+  return w.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function getWords() {
+  return document.getElementById('wordInput').value
+    .split('\n')
+    .map(canonicalize)
+    .filter(w => w.length > 0);
+}
+
+function updateCount() {
+  const n = getWords().length;
+  document.getElementById('wordCount').textContent = n === 1 ? '1 word' : `${n} words`;
+  try { localStorage.setItem(LS_KEY, document.getElementById('wordInput').value); } catch {}
+}
+
+function generateLink() {
+  const words = getWords();
+  if (words.length === 0) return;
+  const encoded = encodeURIComponent(rot13(words.join('|')));
+  const url = `spelling-bee.html?w=${encoded}`;
+  const link = document.getElementById('gameLink');
+  link.href = url;
+  link.textContent = url;
+  document.getElementById('output').style.display = 'block';
+  document.getElementById('copyBtn').textContent = 'Copy Link';
+  document.getElementById('copyBtn').classList.remove('copied');
+}
+
+async function copyLink() {
+  const href = document.getElementById('gameLink').href;
+  try {
+    await navigator.clipboard.writeText(href);
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy Link'; btn.classList.remove('copied'); }, 2000);
+  } catch {}
+}
+
+window.addEventListener('load', () => {
+  try {
+    const saved = localStorage.getItem(LS_KEY);
+    if (saved) document.getElementById('wordInput').value = saved;
+  } catch {}
+  updateCount();
+});
+
+document.getElementById('wordInput').addEventListener('input', updateCount);
+</script>
+</body>
+</html>

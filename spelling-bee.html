@@ -66,8 +66,30 @@
   .subtitle {
     color: #9e6b00;
     font-size: 0.95rem;
-    margin-bottom: 32px;
+    margin-bottom: 6px;
     font-weight: 600;
+  }
+
+  .custom-list-link {
+    display: block;
+    color: #e65100;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+    opacity: 0.55;
+    margin-bottom: 26px;
+  }
+  .custom-list-link:hover { opacity: 1; }
+
+  .custom-banner {
+    font-size: 0.8rem;
+    color: #2e7d32;
+    background: #e8f5e9;
+    border: 2px solid #a5d6a7;
+    border-radius: 12px;
+    padding: 6px 14px;
+    margin-bottom: 18px;
+    font-weight: 700;
   }
 
   .round-badge {
@@ -410,6 +432,9 @@
   <span class="hex-icon">🐝</span>
   <h1>Spelling Bee</h1>
   <p class="subtitle">Listen carefully and spell the word!</p>
+  <a href="link.html" class="custom-list-link">Custom Word List</a>
+
+  <div id="customBanner" class="custom-banner" style="display:none"></div>
 
   <div id="roundBadge" class="round-badge" style="display:none">Round <span id="roundNum">1</span></div>
 
@@ -468,6 +493,26 @@
 </div>
 
 <script>
+// ── ROT13 (used for ?w= custom word list encoding) ────────────────────────────
+function rot13(s) {
+  return s.replace(/[a-zA-Z]/g, c => {
+    const b = c <= 'Z' ? 65 : 97;
+    return String.fromCharCode(((c.charCodeAt(0) - b + 13) % 26) + b);
+  });
+}
+
+// ── Custom word list from URL ?w= param ───────────────────────────────────────
+let customWords = null;
+(function() {
+  try {
+    const p = new URLSearchParams(window.location.search).get('w');
+    if (p) {
+      const words = rot13(decodeURIComponent(p)).split('|').map(w => w.trim()).filter(w => w.length > 0);
+      if (words.length > 0) customWords = words;
+    }
+  } catch {}
+})();
+
 // ── Word Lists (loaded from backend on init) ──────────────────────────────────
 let WORD_LISTS = { a: [], b: [], c: [], d: [] };
 const LEVEL_ORDER  = ["a", "b", "c", "d"];
@@ -623,6 +668,7 @@ function findEntry(display) {
 }
 
 function changeLevel(wasCorrect) {
+  if (customWords) return; // custom lists stay at level a
   const idx = LEVEL_ORDER.indexOf(currentLevel);
   currentLevel = wasCorrect
     ? LEVEL_ORDER[Math.min(idx + 1, LEVEL_ORDER.length - 1)]
@@ -631,19 +677,26 @@ function changeLevel(wasCorrect) {
 
 async function startGame() {
   startBtn.disabled = true;
-  startBtn.textContent = "Loading words...";
 
-  try {
-    const resp = await fetch(`${PROXY_BASE}/wordlists`);
-    if (!resp.ok) throw new Error("Failed to load word lists");
-    WORD_LISTS = await resp.json();
-    // Update word count display now that lists are loaded
+  if (customWords) {
+    WORD_LISTS = { a: customWords, b: [], c: [], d: [] };
     updateWordCounts();
-  } catch(e) {
-    startBtn.disabled = false;
-    startBtn.textContent = "Start Game 🍯";
-    alert("Could not connect to the spelling bee server. Please try again.");
-    return;
+    const banner = document.getElementById('customBanner');
+    banner.textContent = `Custom list: ${customWords.length} word${customWords.length !== 1 ? 's' : ''}`;
+    banner.style.display = 'block';
+  } else {
+    startBtn.textContent = "Loading words...";
+    try {
+      const resp = await fetch(`${PROXY_BASE}/wordlists`);
+      if (!resp.ok) throw new Error("Failed to load word lists");
+      WORD_LISTS = await resp.json();
+      updateWordCounts();
+    } catch(e) {
+      startBtn.disabled = false;
+      startBtn.textContent = "Start Game 🍯";
+      alert("Could not connect to the spelling bee server. Please try again.");
+      return;
+    }
   }
 
   startBtn.style.display = "none";
