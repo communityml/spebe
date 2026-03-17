@@ -194,11 +194,7 @@
 
   <button class="generate-btn" onclick="generateLink()">Generate Link 🔗</button>
 
-  <div class="output-box" id="output">
-    <span class="output-label">Share this link:</span>
-    <a class="output-link" id="gameLink" href="" target="_blank"></a>
-    <button class="copy-btn" id="copyBtn" onclick="copyLink()">Copy Link</button>
-  </div>
+  <div class="output-box" id="output"></div>
 
   <a href="spelling-bee.html" class="back-link">← Play Spelling Bee</a>
 </div>
@@ -217,11 +213,34 @@ function canonicalize(w) {
   return w.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
+const CHUNK_SIZE = 80;
+const SHUFFLE_SEED = 0x5EED_BEE5;
+
+function mulberry32(seed) {
+  return function() {
+    seed = (seed + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 0x100000000;
+  };
+}
+
+function seededShuffle(arr) {
+  const rand = mulberry32(SHUFFLE_SEED);
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 function getWords() {
+  const seen = new Set();
   return document.getElementById('wordInput').value
     .split('\n')
     .map(canonicalize)
-    .filter(w => w.length > 0);
+    .filter(w => w.length > 0 && !seen.has(w) && seen.add(w));
 }
 
 function updateCount() {
@@ -233,21 +252,38 @@ function updateCount() {
 function generateLink() {
   const words = getWords();
   if (words.length === 0) return;
-  const encoded = encodeURIComponent(rot13(words.join('|')));
-  const url = `spelling-bee.html?w=${encoded}`;
-  const link = document.getElementById('gameLink');
-  link.href = url;
-  link.textContent = url;
-  document.getElementById('output').style.display = 'block';
-  document.getElementById('copyBtn').textContent = 'Copy Link';
-  document.getElementById('copyBtn').classList.remove('copied');
+
+  const sorted = words.slice().sort((a, b) => a.localeCompare(b));
+  const shuffled = seededShuffle(sorted);
+
+  const chunks = [];
+  for (let i = 0; i < shuffled.length; i += CHUNK_SIZE) {
+    chunks.push(shuffled.slice(i, i + CHUNK_SIZE));
+  }
+
+  const total = chunks.length;
+  const base = window.location.href.replace(/[^/]*$/, '');
+
+  const outputDiv = document.getElementById('output');
+  outputDiv.innerHTML = chunks.map((chunk, idx) => {
+    const encoded = encodeURIComponent(rot13(chunk.join('|')));
+    const url = base + `spelling-bee.html?w=${encoded}`;
+    const label = total > 1
+      ? `Part ${idx + 1} of ${total} (${chunk.length} words):`
+      : 'Share this link:';
+    return `<span class="output-label">${label}</span>
+<a class="output-link" href="${url}" target="_blank">${url}</a>
+<button class="copy-btn" onclick="copyLink(this)">Copy Link</button>`;
+  }).join('<hr style="border:none;border-top:1px solid #a5d6a7;margin:14px 0">');
+
+  outputDiv.style.display = 'block';
 }
 
-async function copyLink() {
-  const href = document.getElementById('gameLink').href;
+async function copyLink(btn) {
+  const link = btn.previousElementSibling;
+  if (!link) return;
   try {
-    await navigator.clipboard.writeText(href);
-    const btn = document.getElementById('copyBtn');
+    await navigator.clipboard.writeText(link.href);
     btn.textContent = 'Copied!';
     btn.classList.add('copied');
     setTimeout(() => { btn.textContent = 'Copy Link'; btn.classList.remove('copied'); }, 2000);
