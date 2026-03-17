@@ -26,6 +26,7 @@ import urllib.error
 import unicodedata
 import json
 import os
+import re
 
 PORT = int(os.environ.get("PORT", 8080))
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -67,8 +68,14 @@ for _entries in WORD_LISTS.values():
                 VALID_WORDS.add(_normalize(_alt))
             VALID_WORDS.add(_normalize(_primary(_e["display"])))
 
+_WORD_PATTERN = re.compile(r"^[a-zA-Z'\-][a-zA-Z'\- /]{0,49}$")
+
 def is_valid_word(word):
-    return _normalize(_primary(word)) in VALID_WORDS or _normalize(word) in VALID_WORDS
+    if not word or len(word) > 50:
+        return False
+    if word.count("'") > 1 or word.count("/") > 1:
+        return False
+    return bool(_WORD_PATTERN.match(word))
 
 
 # ── Anthropic call ────────────────────────────────────────────────────────────

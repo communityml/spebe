@@ -1142,6 +1142,7 @@ let isSpeaking       = false;
 let lastSpokenText   = "";
 let speakResolve     = null;
 let streak           = 0;
+let correctAtLevel   = 0;   // consecutive correct at current level (for 2-in-a-row promotion)
 let targetedWord     = null;   // word clicked from history
 let levelBeforeTarget = null;  // restore after targeted round
 let isPaused         = false;
@@ -1281,9 +1282,16 @@ function findEntry(display) {
 function changeLevel(wasCorrect) {
   if (gameMode !== 'champions') return; // only champions uses adaptive levels
   const idx = LEVEL_ORDER.indexOf(currentLevel);
-  currentLevel = wasCorrect
-    ? LEVEL_ORDER[Math.min(idx + 1, LEVEL_ORDER.length - 1)]
-    : LEVEL_ORDER[Math.max(idx - 1, 0)];
+  if (wasCorrect) {
+    correctAtLevel++;
+    if (correctAtLevel >= 2) {
+      correctAtLevel = 0;
+      currentLevel = LEVEL_ORDER[Math.min(idx + 1, LEVEL_ORDER.length - 1)];
+    }
+  } else {
+    correctAtLevel = 0;
+    currentLevel = LEVEL_ORDER[Math.max(idx - 1, 0)];
+  }
 }
 
 async function startGame() {
@@ -1368,28 +1376,31 @@ async function nextRound() {
   // Helper: returns true if this round has been superseded (user submitted or new round started)
   const stale = () => roundId !== myRoundId;
 
-  // ── Step 1: Say the word twice (normal + slow), input locked until after first ─
-  const wordAnnouncement = `${primarySpelling(currentWord)}.`;
+  // Fixed speed sequence for word repetitions — varied but never too fast/slow
+  // Reps: 0=first, 1=after first, 2&3=after definition, 4&5=after example
+  const REP_RATES = [0.90, 0.70, 0.86, 0.73, 0.88, 0.68];
+
+  const pw = primarySpelling(currentWord);
+  const wordAnnouncement = pw + ".";
   lastSpokenText = wordAnnouncement;
   setStatus("", false);
   statusText.style.display = "none";
   spellingInput.disabled = true;
   submitBtn.disabled = true;
 
+  // ── Step 1: Word × 2, unlock input after the first ───────────────────────
   await waitIfPaused();
-  await speakText(primarySpelling(currentWord) + ".", 0.92);
+  await speakWordRep(pw, 0, REP_RATES[0]);
 
-  // NOW unlock input — they can start typing after hearing it once
   spellingInput.disabled = false;
   submitBtn.disabled = false;
   spellingInput.placeholder = "type your spelling...";
   spellingInput.focus();
 
-  // Longer pause then say it slower — bail if already submitted
   await new Promise(r => setTimeout(r, 900));
-  if (!stale()) await speakText(primarySpelling(currentWord) + ".", getRate() * 0.65);
+  if (!stale()) await speakWordRep(pw, 1, REP_RATES[1]);
 
-  // ── Step 2: Fetch & speak definition ─────────────────────────────────────
+  // ── Step 2: Definition ────────────────────────────────────────────────────
   if (stale()) return;
   setStatus("Getting definition...", false);
   let definitionText = "";
@@ -1404,7 +1415,14 @@ async function nextRound() {
     await speakText(definitionText);
   }
 
-  // ── Step 3: Fetch & speak example sentence ───────────────────────────────
+  // ── Step 3: Word × 2 after definition ────────────────────────────────────
+  if (stale()) return;
+  await new Promise(r => setTimeout(r, 500));
+  if (!stale()) await speakWordRep(pw, 2, REP_RATES[2]);
+  await new Promise(r => setTimeout(r, 800));
+  if (!stale()) await speakWordRep(pw, 3, REP_RATES[3]);
+
+  // ── Step 4: Example sentence ──────────────────────────────────────────────
   if (stale()) return;
   setStatus("Getting example...", false);
   let exampleText = "";
@@ -1414,14 +1432,23 @@ async function nextRound() {
 
   if (stale()) return;
   if (exampleText) {
-    lastSpokenText = wordAnnouncement + " " + definitionText + " " + exampleText + " Please spell: " + primarySpelling(currentWord) + ".";
+    lastSpokenText = wordAnnouncement + " " + definitionText + " " + exampleText;
     await waitIfPaused();
     await speakText(exampleText);
   }
 
-  // ── Final prompt ─────────────────────────────────────────────────────────
+  // ── Step 5: Word × 2 after example ───────────────────────────────────────
+  if (stale()) return;
+  await new Promise(r => setTimeout(r, 500));
+  if (!stale()) await speakWordRep(pw, 4, REP_RATES[4]);
+  await new Promise(r => setTimeout(r, 800));
+  if (!stale()) await speakWordRep(pw, 5, REP_RATES[5]);
+
+  // ── Final prompt ──────────────────────────────────────────────────────────
+  if (stale()) return;
+  lastSpokenText = wordAnnouncement + " " + definitionText + " " + exampleText + " Please spell: " + pw + ".";
   await waitIfPaused();
-  await speakText(`Please spell: ${primarySpelling(currentWord)}.`);
+  await speakText(`Please spell: ${pw}.`);
   if (spellingInput.disabled) return;
 
   repeatBtn.style.display = "block";
@@ -1506,6 +1533,34 @@ async function speakWordTwice(word) {
   await speakText(word + ".");
   await new Promise(r => setTimeout(r, 900));
   await speakText(word + ".", getRate() * 0.65);
+}
+
+// Returns the Nth English voice, cycling from the user's chosen voice
+function getVoiceByOffset(offset) {
+  const voices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith("en"));
+  if (!voices.length) return null;
+  const sel = document.getElementById("voiceSelect")?.value;
+  const base = sel ? voices.findIndex(v => v.name === sel) : 0;
+  return voices[((base >= 0 ? base : 0) + offset) % voices.length];
+}
+
+// Speak the word at a specific rep index (controls speed + voice rotation)
+function speakWordRep(word, repIndex, rate) {
+  return new Promise(resolve => {
+    if (!window.speechSynthesis) { resolve(); return; }
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(word + ".");
+    utt.rate = rate;
+    utt.pitch = 1.05;
+    const voice = getVoiceByOffset(repIndex);
+    if (voice) utt.voice = voice;
+    isSpeaking = true;
+    speakResolve = resolve;
+    setStatus("", true);
+    utt.onend  = () => { isSpeaking = false; speakResolve = null; resolve(); };
+    utt.onerror= () => { isSpeaking = false; speakResolve = null; resolve(); };
+    window.speechSynthesis.speak(utt);
+  });
 }
 
 function repeatWord() {
