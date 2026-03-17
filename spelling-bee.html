@@ -517,6 +517,26 @@
   }
   .data-tool-btn:hover { background: #ffefc2; }
 
+  @keyframes emoji-pop {
+    0%   { transform: translate(-50%,-50%) scale(0)   rotate(-30deg); opacity: 0; }
+    25%  { transform: translate(-50%,-50%) scale(1.7)  rotate(14deg);  opacity: 1; }
+    50%  { transform: translate(-50%,-50%) scale(1.3)  rotate(-9deg);  opacity: 1; }
+    70%  { transform: translate(-50%,-50%) scale(1.5)  rotate(6deg);   opacity: 1; }
+    85%  { transform: translate(-50%,-50%) scale(1.25) rotate(-3deg);  opacity: 0.9; }
+    100% { transform: translate(-50%,-50%) scale(0.5)  rotate(22deg);  opacity: 0; }
+  }
+  .emoji-flash {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    font-size: 7rem;
+    line-height: 1;
+    pointer-events: none;
+    z-index: 10000;
+    animation: emoji-pop 2s ease-out forwards;
+    user-select: none;
+  }
+
   .wpm-tag {
     display: inline-block;
     font-size: 0.78rem;
@@ -1866,6 +1886,20 @@ function randomSuperlative() {
 }
 
 
+// ── Correct-answer emoji flash ────────────────────────────────────────────────
+const FLASH_EMOJIS = [
+  "🤣","😂","🥳","🎉","🏆","🌟","💫","🎊","🎯","🔥",
+  "💥","🎸","🕺","💃","✨","🌈","🦄","🎆","🤩","😎",
+  "👑","🎺","🥁","🪄","🍾","🫡","🐝","💪","🧠","🫶",
+];
+function flashEmoji() {
+  const el = document.createElement("div");
+  el.className = "emoji-flash";
+  el.textContent = FLASH_EMOJIS[Math.floor(Math.random() * FLASH_EMOJIS.length)];
+  document.body.appendChild(el);
+  el.addEventListener("animationend", () => el.remove());
+}
+
 // ── Confetti burst on streak ──────────────────────────────────────────────────
 function launchConfetti() {
   const canvas = document.createElement("canvas");
@@ -1965,6 +1999,7 @@ async function checkSpelling() {
       ${ptsHtml}${wpmHtml}`;
     if (streak >= 3) launchConfetti();
     await speakText("Correct.");
+    flashEmoji();
     await speakSuperlative(randomSuperlative());
   } else {
     resultBox.className = "result wrong";
