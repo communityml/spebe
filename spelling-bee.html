@@ -450,6 +450,36 @@
   .mode-tab:hover:not(.active):not(:disabled) { background: #fff3cd; }
   .mode-tab:disabled { opacity: 0.5; cursor: not-allowed; }
 
+  .lifetime-row {
+    font-size: 0.8rem;
+    color: #bbb;
+    font-weight: 600;
+    text-align: center;
+    margin-top: 6px;
+  }
+  .lifetime-row .lval { color: #e65100; font-family: 'Fredoka One', cursive; font-size: 1rem; }
+
+  .data-tools {
+    max-width: 520px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+  }
+  .data-tool-btn {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #9e6b00;
+    background: #fff8e1;
+    border: 2px solid #ffd54f;
+    border-radius: 12px;
+    padding: 7px 18px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .data-tool-btn:hover { background: #ffefc2; }
+
 </style>
 </head>
 <body>
@@ -512,6 +542,8 @@
     </div>
   </div>
 
+  <div class="lifetime-row">All time: <span class="lval" id="lifetimeScore">0</span> pts · <span class="lval" id="lifetimeWords">0</span> words mastered</div>
+
   <div class="word-counts" id="wordCounts"></div>
 </div>
 
@@ -529,6 +561,14 @@
       <div class="history-list" id="rightList"></div>
     </div>
   </div>
+</div>
+
+<!-- Data Tools -->
+<div class="data-tools">
+  <button class="data-tool-btn" onclick="downloadProgress()">⬇ Download</button>
+  <label class="data-tool-btn">⬆ Upload
+    <input type="file" id="uploadInput" accept=".json" onchange="handleUpload(event)" style="display:none">
+  </label>
 </div>
 
 <script>
@@ -1129,8 +1169,10 @@ let WORD_LISTS = { a: [], b: [], c: [], d: [] };
 const LEVEL_ORDER  = ["a", "b", "c", "d"];
 const LEVEL_LABELS = { a: "A Level", b: "B Level", c: "C Level", d: "D Level" };
 const MAX_HISTORY  = 50;
-const KEY_WRONG    = "spellingbee_wrong";
-const KEY_RIGHT    = "spellingbee_right";
+const KEY_WRONG          = "spellingbee_wrong";
+const KEY_RIGHT          = "spellingbee_right";
+const KEY_LIFETIME_SCORE = "spellingbee_lifetime_score";
+const KEY_LIFETIME_WORDS = "spellingbee_lifetime_words";
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let currentWord      = "";
@@ -1174,6 +1216,38 @@ function addToHistory(key, word) {
   arr.unshift(word);
   if (arr.length > MAX_HISTORY) arr = arr.slice(0, MAX_HISTORY);
   saveHistory(key, arr);
+}
+
+// ── Signing (tongue-in-cheek integrity — you'd have to read the JS to cheat) ─
+const SIGN_KEY = "beekeeper_extraordinaire";
+function djb2(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(16);
+}
+function signPayload(data) {
+  const canonical = JSON.stringify(data, Object.keys(data).sort());
+  return djb2(SIGN_KEY + canonical + SIGN_KEY);
+}
+
+// ── Lifetime score ────────────────────────────────────────────────────────────
+function loadLifetimeScore() {
+  try { return JSON.parse(localStorage.getItem(KEY_LIFETIME_SCORE) || "0"); } catch { return 0; }
+}
+function loadLifetimeWords() {
+  try { return JSON.parse(localStorage.getItem(KEY_LIFETIME_WORDS) || "[]"); } catch { return []; }
+}
+function updateLifetimeDisplay() {
+  document.getElementById("lifetimeScore").textContent = loadLifetimeScore();
+  document.getElementById("lifetimeWords").textContent = loadLifetimeWords().length;
+}
+function creditLifetime(word) {
+  const words = loadLifetimeWords();
+  if (words.includes(word)) return;
+  words.push(word);
+  localStorage.setItem(KEY_LIFETIME_WORDS, JSON.stringify(words));
+  localStorage.setItem(KEY_LIFETIME_SCORE, JSON.stringify(loadLifetimeScore() + word.length));
+  updateLifetimeDisplay();
 }
 
 // ── Render history ────────────────────────────────────────────────────────────
@@ -1763,7 +1837,7 @@ async function checkSpelling() {
   const entry = findEntry(currentWord);
   const normGuess = normalizeSpelling(guess);
   const isCorrect = entryAlts(entry).includes(normGuess);
-  if (isCorrect) { correct++; streak++; } else { streak = 0; }
+  if (isCorrect) { correct++; streak++; creditLifetime(currentWord); } else { streak = 0; }
 
   document.getElementById("scoreCorrect").textContent = correct;
   document.getElementById("scoreTotal").textContent = total;
@@ -1850,9 +1924,59 @@ if (window.speechSynthesis) {
 
 // Show any saved history on load
 renderHistory();
+updateLifetimeDisplay();
 
 // Initialise mode (e.g. if arriving via a ?w= custom link)
 setMode(gameMode);
+
+// ── Download / Upload progress ────────────────────────────────────────────────
+function downloadProgress() {
+  const data = {
+    spellingbee_wrong:          loadHistory(KEY_WRONG),
+    spellingbee_right:          loadHistory(KEY_RIGHT),
+    spellingbee_lifetime_score: loadLifetimeScore(),
+    spellingbee_lifetime_words: loadLifetimeWords(),
+  };
+  const payload = Object.assign({}, data, { sig: signPayload(data) });
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const a = Object.assign(document.createElement("a"), {
+    href: URL.createObjectURL(blob),
+    download: "spelling-bee-progress.json",
+  });
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function handleUpload(event) {
+  const file = event.target.files[0];
+  event.target.value = "";
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const payload = JSON.parse(e.target.result);
+      const { sig, ...data } = payload;
+      if (signPayload(data) !== sig) {
+        alert("Signature mismatch — did someone tamper with the honey? 🍯");
+        return;
+      }
+      if (Array.isArray(data.spellingbee_wrong))
+        saveHistory(KEY_WRONG, data.spellingbee_wrong);
+      if (Array.isArray(data.spellingbee_right))
+        saveHistory(KEY_RIGHT, data.spellingbee_right);
+      if (typeof data.spellingbee_lifetime_score === "number")
+        localStorage.setItem(KEY_LIFETIME_SCORE, JSON.stringify(data.spellingbee_lifetime_score));
+      if (Array.isArray(data.spellingbee_lifetime_words))
+        localStorage.setItem(KEY_LIFETIME_WORDS, JSON.stringify(data.spellingbee_lifetime_words));
+      renderHistory();
+      updateLifetimeDisplay();
+      alert("Progress restored! Welcome back, beekeeper. 🐝");
+    } catch {
+      alert("Could not read that file — make sure it's a valid spelling bee export.");
+    }
+  };
+  reader.readAsText(file);
+}
 
 // Word counts (called after word lists load)
 function updateWordCounts() {
