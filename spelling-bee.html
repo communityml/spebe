@@ -480,6 +480,18 @@
   }
   .data-tool-btn:hover { background: #ffefc2; }
 
+  .wpm-tag {
+    display: inline-block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #5c6bc0;
+    background: #e8eaf6;
+    border: 1px solid #9fa8da;
+    border-radius: 8px;
+    padding: 2px 8px;
+    margin-top: 6px;
+  }
+
 </style>
 </head>
 <body>
@@ -1188,6 +1200,7 @@ let correctAtLevel   = 0;   // consecutive correct at current level (for 2-in-a-
 let targetedWord     = null;   // word clicked from history
 let levelBeforeTarget = null;  // restore after targeted round
 let isPaused         = false;
+let typingStartTime  = null;  // timestamp of first keystroke per round
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const statusText    = document.getElementById("statusText");
@@ -1231,6 +1244,11 @@ function signPayload(data) {
 }
 
 // ── Lifetime score ────────────────────────────────────────────────────────────
+// Points per word: ceil(n² / 10) * 10  →  1-3=10, 4=20, 5=30, 6=40, 7=50,
+//                                          8=70, 9=90, 10=100, 11=130, 12=150 …
+function wordScore(n) {
+  return Math.ceil(n * n / 10) * 10;
+}
 function loadLifetimeScore() {
   try { return JSON.parse(localStorage.getItem(KEY_LIFETIME_SCORE) || "0"); } catch { return 0; }
 }
@@ -1246,7 +1264,7 @@ function creditLifetime(word) {
   if (words.includes(word)) return;
   words.push(word);
   localStorage.setItem(KEY_LIFETIME_WORDS, JSON.stringify(words));
-  localStorage.setItem(KEY_LIFETIME_SCORE, JSON.stringify(loadLifetimeScore() + word.length));
+  localStorage.setItem(KEY_LIFETIME_SCORE, JSON.stringify(loadLifetimeScore() + wordScore(word.length)));
   updateLifetimeDisplay();
 }
 
@@ -1279,6 +1297,12 @@ function playTargetedWord(word) {
 }
 
 // ── Input / interrupt ─────────────────────────────────────────────────────────
+spellingInput.addEventListener("input", () => {
+  if (typingStartTime === null && spellingInput.value.length > 0) {
+    typingStartTime = Date.now();
+  }
+});
+
 spellingInput.addEventListener("keydown", e => {
   if (e.key === "Enter") {
     if (!submitBtn.disabled) {
@@ -1442,6 +1466,7 @@ async function nextRound() {
   resultBox.innerHTML = "";
   spellingInput.value = "";
   spellingInput.disabled = false;
+  typingStartTime = null;
   submitBtn.disabled = true;
   spellingInput.placeholder = "start typing while I talk...";
   spellingInput.focus();
@@ -1829,6 +1854,9 @@ async function checkSpelling() {
   const guess = spellingInput.value.trim().toLowerCase();
   if (!guess || spellingInput.disabled) return;
 
+  const wpm = calcWpm(guess, typingStartTime ? Date.now() - typingStartTime : null);
+  typingStartTime = null;
+
   roundId++; // invalidate any in-flight definition/example fetches for this round
   spellingInput.disabled = true;
   submitBtn.disabled = true;
@@ -1858,6 +1886,7 @@ async function checkSpelling() {
 
   const levelClass    = "level-" + levelAtAnswer;
   const nextLevelLabel = LEVEL_LABELS[currentLevel];
+  const wpmHtml = wpm ? `<span class="wpm-tag">⌨ ${wpm} WPM</span>` : "";
 
   if (isCorrect) {
     resultBox.className = "result correct";
@@ -1865,7 +1894,8 @@ async function checkSpelling() {
       <span class="result-label">✅ Correct! Well done!</span>
       <span class="correct-word">${currentWord}</span>
       <span class="level-tag ${levelClass}">${LEVEL_LABELS[levelAtAnswer]}</span>
-      <span style="display:block;font-size:0.85rem;margin-top:8px;opacity:0.7">Next up: ${nextLevelLabel}</span>`;
+      <span style="display:block;font-size:0.85rem;margin-top:8px;opacity:0.7">Next up: ${nextLevelLabel}</span>
+      ${wpmHtml}`;
     if (streak >= 3) launchConfetti();
     await speakText("Correct.");
     await speakSuperlative(randomSuperlative());
@@ -1875,7 +1905,8 @@ async function checkSpelling() {
       <span class="result-label">❌ Not quite. The correct spelling is:</span>
       <span class="correct-word">${currentWord}</span>
       <span class="level-tag ${levelClass}">${LEVEL_LABELS[levelAtAnswer]}</span>
-      <span style="display:block;font-size:0.85rem;margin-top:8px;opacity:0.7">Next up: ${nextLevelLabel}</span>`;
+      <span style="display:block;font-size:0.85rem;margin-top:8px;opacity:0.7">Next up: ${nextLevelLabel}</span>
+      ${wpmHtml}`;
     await speakText(`Not quite. The correct spelling is ${currentWord.split("").join(" ")}.`);
     await speakText(primarySpelling(currentWord) + ".");
   }
@@ -1928,6 +1959,14 @@ updateLifetimeDisplay();
 
 // Initialise mode (e.g. if arriving via a ?w= custom link)
 setMode(gameMode);
+
+// ── Typing speed ──────────────────────────────────────────────────────────────
+// Standard WPM: (characters / 5) / minutes
+function calcWpm(guess, elapsedMs) {
+  if (!elapsedMs || elapsedMs <= 0) return null;
+  const wpm = Math.round((guess.length / 5) / (elapsedMs / 60000));
+  return wpm >= 10 ? wpm : null;
+}
 
 // ── Download / Upload progress ────────────────────────────────────────────────
 function downloadProgress() {
